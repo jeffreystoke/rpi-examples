@@ -1,4 +1,4 @@
-.tarvis.yml
+.travis.yml
 deploy.yaml
 *.dockerfile
 .git
