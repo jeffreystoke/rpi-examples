@@ -13,6 +13,11 @@ jobs:
         - docker run --rm --privileged multiarch/qemu-user-static:register
         # build image
         - make build-image
+        # check and login
+        - docker images
+        - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+        # push image
+        - make push-image
 
 stages:
   - build images
