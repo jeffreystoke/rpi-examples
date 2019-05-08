@@ -1,0 +1,18 @@
+sudo: true
+os:
+  - linux
+
+language: generic
+
+jobs:
+  include:
+    - stage: build images
+      if: branch = master
+      script:
+        # prepare for multi-arch build with qemu (register archs using qemu)
+        - docker run --rm --privileged multiarch/qemu-user-static:register
+        # build image
+        - make build-image
+
+stages:
+  - build images
