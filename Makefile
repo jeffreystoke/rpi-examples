@@ -1,4 +1,5 @@
 IMAGE_NAME_ARMV7 := jeffctor/rpi-examples-armv7:latest
+IMAGE_NAME_ARM64 := jeffctor/rpi-examples-arm64:latest
 
 .PHONY: build-image
 build-image:
