@@ -50,9 +50,12 @@ spec:
       nodeSelector:
         arhat.dev/name: my-rpi
       volumes:
-      - name: rootfs
+      - name: procfs
         hostPath:
-          path: /
+          path: /proc
+      - name: sysfs
+        hostPath:
+          path: /sys
       - name: dev-dir
         hostPath:
           path: /dev
@@ -99,11 +102,15 @@ spec:
         command:
         - /bin/node_exporter
         - --web.listen-address=localhost:9100
-        - --path.rootfs=/host
+        - --path.procfs=/host/proc
+        - --path.sysfs=/host/sys
         - --collector.textfile.directory=/var/lib/textfile-collections
         volumeMounts:
-        - name: rootfs
-          mountPath: /host
+        - name: sysfs
+          mountPath: /host/sys
+          readOnly: true
+        - name: procfs
+          mountPath: /host/proc
           readOnly: true
         - name: collection-dir
           mountPath: /var/lib/textfile-collections
