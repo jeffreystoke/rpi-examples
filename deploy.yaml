@@ -1,118 +1,41 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pushgateway-userpass
-  namespace: edge
-type: Opaque
-data:
-   username: BASE64_ENCODED_VALUE
-   password: BASE64_ENCODED_VALUE
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pusher-script
-  namespace: edge
-data:
-  push.sh: |-
-    #!/bin/sh
-
-    while true; do
-        sleep 5
-        curl http://localhost:9100/metrics | \
-          curl --user "$PUSH_GATEWAY_USER:$PUSH_GATEWAY_PASS" --data-binary @- \
-            https://pushgateway.example.com/metrics/job/kubernetes-nodes/instance/my-rpi
-    done
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: node-exporter
-  name: exporter-for-my-rpi
+    app: sensors
+  name: sensor-home-rpi
   namespace: edge
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: exporter-for-my-rpi
-  strategy: {}
+      app: sensor-home-rpi
   template:
     metadata:
       labels:
-        app: exporter-for-my-rpi
+        app: sensor-home-rpi
     spec:
-      hostNetwork: true
-      hostPID: true
       tolerations:
       - key: arhat.dev/namespace
         value: edge
       nodeSelector:
-        arhat.dev/name: my-rpi
+        arhat.dev/name: home-rpi
       volumes:
-      - name: procfs
-        hostPath:
-          path: /proc
-      - name: sysfs
-        hostPath:
-          path: /sys
       - name: dev-dir
         hostPath:
           path: /dev
       - name: collection-dir
-        emptyDir: {}
-      - name: pusher-script
-        configMap:
-          name: pusher-script
+        hostPath:
+          path: /run/metrics/textfile
       containers:
-      # push data to prometheus push gateway
-      - image: jaedle/alpine-curl-jq-arm32v7:latest
-        imagePullPolicy: IfNotPresent
-        name: pusher
-        command:
-        - /bin/sh
-        - /usr/local/bin/push.sh
-        volumeMounts:
-        - name: pusher-script
-          mountPath: /usr/local/bin
-          subPath: push.sh
-        env:
-        - name: PUSH_GATEWAY_USER
-          valueFrom:
-            secretKeyRef:
-              name: pushgateway-userpass
-              key: username
-        - name: PUSH_GATEWAY_PASS
-          valueFrom:
-            secretKeyRef:
-              name: pushgateway-userpass
-              key: password
-      # collector (textfile collector)
       - image: jeffctor/rpi-examples-armv7:latest
         imagePullPolicy: IfNotPresent
-        name: collector
+        name: sensor-reader
         volumeMounts:
         - name: collection-dir
           mountPath: /var/lib/textfile-collections
         - name: dev-dir
           mountPath: /dev
-      # prometheus node-exporter
-      - image: prom/node-exporter-linux-armv7:master
-        name: node-exporter
-        command:
-        - /bin/node_exporter
-        - --web.listen-address=localhost:9100
-        - --path.procfs=/host/proc
-        - --path.sysfs=/host/sys
-        - --collector.textfile.directory=/var/lib/textfile-collections
-        volumeMounts:
-        - name: sysfs
-          mountPath: /host/sys
-          readOnly: true
-        - name: procfs
-          mountPath: /host/proc
-          readOnly: true
-        - name: collection-dir
-          mountPath: /var/lib/textfile-collections
         securityContext:
-          runAsUser: 0
+          # required to manipulate GPIO
+          privileged: true
